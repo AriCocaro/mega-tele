@@ -10,8 +10,12 @@ const API_KEY: string = "AIzaSyBHMZUxLOqfa42iwh0UxYpPYQ_LNvgeyXM";
 // carpeta de Drive con los videos
 const FOLDER_ID = "1dbYtcSPNqWAq4Xqo2euKXIIDd_-dC8mI";
 
-// true = muestra errores en pantalla. Cuando todo ande, ponelo en false.
-const DEBUG = true;
+// true = muestra mensajes de error en pantalla. Cuando todo ande, ponelo en false.
+const DEBUG: boolean = true;
+
+// true = guarda cada video en el navegador para bajarlo una sola vez de Drive.
+// false = reproduce directo desde Drive (probar en la tele si da "Failed to fetch").
+const USE_CACHE: boolean = true;
 
 // cada cuánto vuelve a consultar la carpeta (30 min)
 const REFRESH_MS = 30 * 60 * 1000;
@@ -152,7 +156,7 @@ export default function FullscreenPlayer() {
           return;
         }
         catalog.current = list;
-        cleanCache(list).catch(() => {});
+        if (USE_CACHE) cleanCache(list).catch(() => {});
         if (first) {
           setLog("");
           setQueue(shuffle(list)); // mezcla solo en el navegador
@@ -188,6 +192,11 @@ export default function FullscreenPlayer() {
     let objectUrl: string | null = null;
     setSrc(null);
 
+    if (!USE_CACHE) {
+      setSrc(videoUrl(current.id)); // reproducción directa desde Drive
+      return;
+    }
+
     loadBlob(current.id)
       .then((blob) => {
         if (cancelled) return;
@@ -201,9 +210,11 @@ export default function FullscreenPlayer() {
       })
       .catch((e: Error) => {
         if (cancelled) return;
-        setLog(`No se pudo bajar "${current.name}": ${e.message}`);
-        errors.current += 1;
-        if (errors.current < queue.length) next(); // evita bucle infinito
+        // no se pudo bajar/guardar completo: lo reproduce directo desde Drive
+        setLog(
+          `Sin caché para "${current.name}" (${e.message}), reproduciendo directo`
+        );
+        setSrc(videoUrl(current.id));
       });
 
     return () => {
@@ -228,10 +239,10 @@ export default function FullscreenPlayer() {
   const handleError = (e: React.SyntheticEvent<HTMLVideoElement>) => {
     const code = e.currentTarget.error?.code ?? "?";
     setLog(
-      `Error ${code} en "${current?.name}": el archivo no se pudo reproducir (probable códec no compatible)`
+      `Error ${code} en "${current?.name}": el archivo no se pudo reproducir (límite de Drive o códec no compatible)`
     );
     errors.current += 1;
-    if (errors.current < queue.length) next();
+    if (errors.current < queue.length) next(); // evita bucle infinito
   };
 
   if (API_KEY === "PEGAR_ACA_TU_API_KEY") {
@@ -260,6 +271,7 @@ export default function FullscreenPlayer() {
           key={current.id}
           src={src}
           playsInline
+          preload="auto"
           loop={queue.length === 1}
           onPlaying={() => {
             errors.current = 0;

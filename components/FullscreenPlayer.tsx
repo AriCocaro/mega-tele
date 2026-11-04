@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 type Video = { id: string; name: string };
 
 // 👇 pegá tu clave acá, entre las comillas
-const API_KEY = "AIzaSyBHMZUxLOqfa42iwh0UxYpPYQ_LNvgeyXM";
+const API_KEY : string = "AIzaSyBHMZUxLOqfa42iwh0UxYpPYQ_LNvgeyXM";
 
 // carpeta de Drive con los videos
 const FOLDER_ID = "1dbYtcSPNqWAq4Xqo2euKXIIDd_-dC8mI";
